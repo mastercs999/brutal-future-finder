@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NDtw;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,8 +29,8 @@ namespace BrutalFutureFinder
 
         private readonly double[] RatioOHLC = new double[] { 0.25, 0.25, 0.25, 0.25 };
 
-        private string FileFilePath = @"C:\Users\MASTER\Desktop\BFF Data\AMD.csv";
-        private string DataFilePath = @"C:\Users\MASTER\Desktop\BFF Data\";
+        private string FileFilePath = @"C:\Users\H190317\Desktop\BFF Data\INTC.csv";
+        private string DataFilePath = @"C:\Users\H190317\Desktop\BFF Data\";
         private List<Bar> Bars;
         private List<Bar> AllBars;
         private List<Result> Results;
@@ -62,27 +63,27 @@ namespace BrutalFutureFinder
                 bestResults = FindBest(toCount, toCompare);
             else
             {
-                List<double> source = null;
-                List<double> compare = null;
+                double[] source = null;
+                double[] compare = null;
                 if (DisplayOpen.IsChecked == true)
                 {
-                    source = toCount.Select(x => x.AdjustedOpen).ToList();
-                    compare = toCompare.Select(x => x.AdjustedOpen).ToList();
+                    source = toCount.Select(x => x.AdjustedOpen).ToArray();
+                    compare = toCompare.Select(x => x.AdjustedOpen).ToArray();
                 }
                 else if (DisplayHigh.IsChecked == true)
                 {
-                    source = toCount.Select(x => x.AdjustedHigh).ToList();
-                    compare = toCompare.Select(x => x.AdjustedHigh).ToList();
+                    source = toCount.Select(x => x.AdjustedHigh).ToArray();
+                    compare = toCompare.Select(x => x.AdjustedHigh).ToArray();
                 }
                 else if (DisplayLow.IsChecked == true)
                 {
-                    source = toCount.Select(x => x.AdjustedLow).ToList();
-                    compare = toCompare.Select(x => x.AdjustedLow).ToList();
+                    source = toCount.Select(x => x.AdjustedLow).ToArray();
+                    compare = toCompare.Select(x => x.AdjustedLow).ToArray();
                 }
                 else
                 {
-                    source = toCount.Select(x => x.AdjustedClose).ToList();
-                    compare = toCompare.Select(x => x.AdjustedClose).ToList();
+                    source = toCount.Select(x => x.AdjustedClose).ToArray();
+                    compare = toCompare.Select(x => x.AdjustedClose).ToArray();
                 }
 
                 bestResults = FindBest(source, compare);
@@ -97,20 +98,20 @@ namespace BrutalFutureFinder
             // Prekreslime
             Redraw();        
         }
-        public List<Result> FindBest(List<double> source, List<double> compareData)
+        public List<Result> FindBest(double[] source, double[] compareData)
         {
             List<Result> results = new List<Result>();
 
             // Vypocitame prvni
-            double corellation = PearsonCorrelation(source, compareData, 0, source.Count);
+            double corellation = PearsonCorrelation(source, compareData, 0, source.Length);
             Result res = new Result(0, corellation);
             results.Add(res);
 
             Result worst = res;
-            for (int i = 1; i < compareData.Count - source.Count; ++i)
+            for (int i = 1; i < compareData.Length - source.Length; ++i)
             {
                 // Vypocitame korelaci
-                corellation = PearsonCorrelation(source, compareData, i, source.Count);
+                corellation = PearsonCorrelation(source, compareData, i, source.Length);
 
                 // Pokud je vypocitana korelace lepsi nez nejhorsi v best N
                 if (corellation >= worst.Corellation)
@@ -133,15 +134,15 @@ namespace BrutalFutureFinder
         public List<Result> FindBest(Bar[] source, Bar[] compareData)
         {
             // Roztridime data
-            List<double> sourceOpen = source.Select(x => x.AdjustedOpenGain).ToList();
-            List<double> sourceHigh = source.Select(x => x.AdjustedHighGain).ToList();
-            List<double> sourceLow = source.Select(x => x.AdjustedLowGain).ToList();
-            List<double> sourceClose = source.Select(x => x.AdjustedCloseGain).ToList();
+            double[] sourceOpen = source.Select(x => x.AdjustedOpenGain).ToArray();
+            double[] sourceHigh = source.Select(x => x.AdjustedHighGain).ToArray();
+            double[] sourceLow = source.Select(x => x.AdjustedLowGain).ToArray();
+            double[] sourceClose = source.Select(x => x.AdjustedCloseGain).ToArray();
 
-            List<double> compareDataOpen = compareData.Select(x => x.AdjustedOpenGain).ToList();
-            List<double> compareDataHigh = compareData.Select(x => x.AdjustedHighGain).ToList();
-            List<double> compareDataLow = compareData.Select(x => x.AdjustedLowGain).ToList();
-            List<double> compareDataClose = compareData.Select(x => x.AdjustedCloseGain).ToList();
+            double[] compareDataOpen = compareData.Select(x => x.AdjustedOpenGain).ToArray();
+            double[] compareDataHigh = compareData.Select(x => x.AdjustedHighGain).ToArray();
+            double[] compareDataLow = compareData.Select(x => x.AdjustedLowGain).ToArray();
+            double[] compareDataClose = compareData.Select(x => x.AdjustedCloseGain).ToArray();
 
             List<Result> results = new List<Result>();
 
@@ -182,15 +183,21 @@ namespace BrutalFutureFinder
             // Vratime vysledek
             return results;
         }
-        public static double PearsonCorrelation(List<double> xs, List<double> ys, int from, int count)
+        public static double PearsonCorrelation(double[] xs, double[] ys, int from, int count)
         {
+            var dtw = MyDtw(xs, ys, from, count);
+            if (double.IsInfinity(dtw))
+                return 0;
+            else
+                return dtw;
+
             double sumX = 0;
             double sumX2 = 0;
             double sumY = 0;
             double sumY2 = 0;
             double sumXY = 0;
 
-            int n = xs.Count < count ? xs.Count : count;
+            int n = xs.Length < count ? xs.Length : count;
 
             for (int i = 0; i < n; ++i)
             {
@@ -216,6 +223,12 @@ namespace BrutalFutureFinder
                 return -1;
             else
                 return result;
+        }
+        public static double MyDtw(double[] xs, double[] ys, int from, int count)
+        {
+            int n = xs.Length < count ? xs.Length : count;
+
+            return -new Dtw(xs, ys[from..(from + n)]).GetCost();
         }
 
         private void Redraw()
